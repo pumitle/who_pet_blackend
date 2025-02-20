@@ -2,6 +2,9 @@ const express = require('express');
 const { conn,queryAsync } = require('../dbcon');
 const mysql = require('mysql');
 const jwt = require('jsonwebtoken'); 
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+
 
 const router = express.Router();
 
@@ -96,6 +99,93 @@ router.post("/registerU" , (req,res)=> {
  });
 
 
+
+ ///ลืมรหัส 
+
+ const resetTokens = {}; // เก็บโทเค็นและวันหมดอายุ
+
+// เส้นทางสำหรับลืมรหัสผ่าน
+router.post('/forgot-password', (req, res) => {
+    const { email } = req.body;
+    
+    // สร้างเลขยืนยันตัวตน 6 หลัก
+    const verificationCode = Math.floor(100000 + Math.random() * 900000); // สร้างเลข 6 หลัก
+    
+    // เก็บเลขยืนยันตัวตนและวันหมดอายุในหน่วยความจำ
+    const expires = new Date(Date.now() + 3600000); // หมดอายุใน 1 ชั่วโมง
+    resetTokens[verificationCode] = { email, expires };
+    
+    // สร้างลิงก์สำหรับยืนยันตัวตน
+    const resetLink = `app://reset-password?code=${verificationCode}`;
+
+    // ตั้งค่าการส่งอีเมล
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'dfn31tv@gmail.com',  // ใส่อีเมลตรงๆ
+        pass: 'xuov fanv gtvg uhcp'        // ใส่รหัสผ่านตรงๆ
+      }
+    });
+  
+    const mailOptions = {
+      from: 'dfn31tv@gmail.com',
+      to: email,
+      subject: 'รหัสยืนยันตัวตนสำหรับรีเซ็ตรหัสผ่าน',
+      html: `
+      <div style="display: flex; justify-content: flex-end; align-items: center; height: 100vh; font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding-right: 20px;">
+        <div>
+          <h1 style="font-size: 44px; color: #333; align-items: center;" >รหัสยืนยันตัวตน</h1>
+          <p style="font-size: 36px; color:rgb(164, 6, 6); font-weight: bold;">${verificationCode}</p>
+          <p style="font-size: 18px; color: #555;">กรุณาใช้รหัสนี้เพื่อรีเซ็ตรหัสผ่านของคุณ</p>
+        </div>
+      </div>`
+    };
+  
+    // ส่งอีเมล
+    transporter.sendMail(mailOptions, (err, info) => {
+        if (err) {
+          console.error('Error:', err);  // แสดงรายละเอียดข้อผิดพลาด
+          return res.status(500).json({ message: 'ส่งอีเมลไม่สำเร็จ' });
+        }
+        res.json({ message: 'ส่งรหัสยืนยันตัวตนแล้ว' });
+    });
+});
+
+
+// 📌 ตรวจสอบรหัสยืนยันตัวตน
+router.post('/reset-password', (req, res) => {
+    const { verificationCode, email, newPassword } = req.body;
+  
+    // ตรวจสอบว่าโค้ดที่ผู้ใช้กรอกถูกต้องหรือไม่
+    if (!resetTokens[verificationCode]) {
+      return res.status(400).json({ message: 'รหัสยืนยันตัวตนไม่ถูกต้องหรือหมดอายุ' });
+    }
+  
+    const tokenData = resetTokens[verificationCode];
+  
+    // ตรวจสอบว่าโค้ดหมดอายุหรือไม่
+    if (new Date() > tokenData.expires) {
+      delete resetTokens[verificationCode];  // ลบโค้ดที่หมดอายุออกจากหน่วยความจำ
+      return res.status(400).json({ message: 'รหัสยืนยันตัวตนหมดอายุ' });
+    }
+  
+    // ตรวจสอบว่าอีเมลตรงกับที่เก็บในหน่วยความจำ
+    if (tokenData.email !== email) {
+      return res.status(400).json({ message: 'อีเมลไม่ตรงกับรหัสยืนยันตัวตน' });
+    }
+  
+    // รีเซ็ตรหัสผ่าน
+    const updateQuery = 'UPDATE Users SET password = ? WHERE email = ?';
+    conn.query(updateQuery, [newPassword, email], (err, updateResult) => {
+      if (err) return res.status(500).json({ message: 'ไม่สามารถรีเซ็ตรหัสผ่านได้' });
+      
+      // ลบโค้ดจากหน่วยความจำหลังการใช้งาน
+      delete resetTokens[verificationCode];
+  
+      res.json({ message: 'รีเซ็ตรหัสผ่านสำเร็จ' });
+    });
+  });
+  
 
 
 // ส่งออก router
