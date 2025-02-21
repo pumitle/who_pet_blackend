@@ -128,7 +128,7 @@ router.post('/forgot-password', (req, res) => {
     });
   
     const mailOptions = {
-      from: 'dfn31tv@gmail.com',
+      from: 'whopetsandlove@gmail.com',
       to: email,
       subject: 'รหัสยืนยันตัวตนสำหรับรีเซ็ตรหัสผ่าน',
       html: `
