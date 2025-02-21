@@ -112,7 +112,7 @@ router.post('/forgot-password', (req, res) => {
     const verificationCode = Math.floor(100000 + Math.random() * 900000); // สร้างเลข 6 หลัก
     
     // เก็บเลขยืนยันตัวตนและวันหมดอายุในหน่วยความจำ
-    const expires = new Date(Date.now() + 3600000); // หมดอายุใน 1 ชั่วโมง
+    const expires = new Date(Date.now() + 60000); // หมดอายุใน 1 ชั่วโมง
     resetTokens[verificationCode] = { email, expires };
     
     // สร้างลิงก์สำหรับยืนยันตัวตน
