@@ -4,6 +4,7 @@ const cors = require('cors');
 
 // นำเข้าส่วนที่ต้องการจาก API ต่างๆ
 const { router: user_all} = require('./api/user_all');
+const {router: funcT} = require('./api/funtion');
 
 
 
@@ -24,7 +25,7 @@ app.use(bodyParser.json());
 // ตั้งค่า routes
 
 app.use("/user",user_all);
-// app.use("/order",order_fun);
+app.use("/func",funcT);
 // app.use("/upload",upimage);
 
 // ส่งออก app
